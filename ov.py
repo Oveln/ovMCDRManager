@@ -6,10 +6,12 @@ import time
 from utils.rtext import *
 
 # 常量表
+Version = 'v1.0.1'
 SavePath = './ov'
 WLSavePath = './ov/WhiteList.json'
 BotsSavePath = './ov/Bots.json'
 PlayersSavePath = './ov/Players.json'
+CommandsPath = './ov/Commands.json'
 Perfix = '!!ov'
 # admin 3
 # helper 2
@@ -19,7 +21,9 @@ MiniPermissionLevel = {
     'bot':2,
     'time':1,
     'cls':1,
-    'sp':1
+    'sp':1,
+    'goout':2,
+    'cmd':3
 }
 
 #变量表
@@ -32,6 +36,7 @@ Bots = {
 Players = {
 
 }
+Commands = []
 
 def command_run(message, text, command):
 	return RText(message).set_hover_text(text).set_click_event(RAction.run_command, command)
@@ -40,18 +45,20 @@ def command_input(message, text, command):
 def doHelpMessage(s):
     if (s=='ov'):
         return '''
-------- MCDR ov 20020525 1.0 -----
+------- MCDR ov '''+Version+''' -----
         '''+command_run('§e§o§nOveln§r','夸赞Oveln','OvelnNB!')+'''做的啥都想干的插件
 §c【指令说明】§r
 '''+command_run('§e{}§r'.format(Perfix),'执行','{}'.format(Perfix))+'''                查看ov插件说明§r
 '''+command_run('§e{} wl§r'.format(Perfix),'执行','{} wl'.format(Perfix))+'''             玩家白名单功能
 '''+command_run('§e{} bot§r'.format(Perfix),'执行','{} bot'.format(Perfix))+'''            服务器假人功能
+'''+command_run('§e{} cmd§r'.format(Perfix),'执行','{} cmd'.format(Perfix))+'''            服务器命令集
 '''+command_run('§e{} time§r'.format(Perfix),'执行','{} time'.format(Perfix))+'''            在线时长统计
-'''+command_run('§e{} cls§r'.format(Perfix),'执行','{} cls'.format(Perfix))+'''            清理凋落物
+'''+command_run('§e{} cls§r'.format(Perfix),'执行','{} cls'.format(Perfix))+'''            清理掉落物
+'''+command_input('§e{} goout 玩家名§r'.format(Perfix),'输入','{} goout 玩家名'.format(Perfix))+'''            踢人
 '''
     if (s=='wl'):
         return '''
-------- MCDR ov 20020525 1.0 -----
+------- MCDR ov '''+Version+''' -----
 §c【指令说明】§r
 '''+command_input('§e{} wl add 玩家名§r'.format(Perfix),'输入','{} wl add 玩家名'.format(Perfix))+''' 添加玩家白名单 
 '''+command_input('§e{} wl del 玩家名§r'.format(Perfix),'输入','{} del 玩家名'.format(Perfix))+''' 删除玩家白名单
@@ -59,7 +66,7 @@ def doHelpMessage(s):
 '''
     if (s=='bot'):
         return '''
-------- MCDR ov 20020525 1.0 -----
+------- MCDR ov '''+Version+''' -----
 §c【功能说明】§r
 假人会在所有玩家§c下线之后§r出现在§c设置好的位置§r
 §c【指令说明】§r
@@ -68,6 +75,14 @@ def doHelpMessage(s):
 '''+command_input('§e{} bot lay 假人名§r'.format(Perfix),'输入','{} bot lay 假人名'.format(Perfix))+'''               直接放置假人
 '''+command_input('§e{} bot unlay 假人名§r'.format(Perfix),'输入','{} bot unlay 假人名'.format(Perfix))+'''             取消放置假人
 '''+command_run('§e{} bot list§r'.format(Perfix),'执行','{} bot list'.format(Perfix))+'''                         查看假人名单
+'''
+    if (s=='cmd'):
+        return '''
+------- MCDR ov '''+Version+''' -----
+§c【指令说明】§r
+'''+command_run('§e{} cmd do§r'.format(Perfix),'执行','{} cmd do'.format(Perfix))+'''                           执行命令集命令
+'''+command_run('§e{} cmd read§r'.format(Perfix),'执行','{} cmd read'.format(Perfix))+'''                         热读取命令集
+'''+command_run('§e{} cmd list§r'.format(Perfix),'执行','{} cmd list'.format(Perfix))+'''                         查看命令集
 '''
 #判断数字
 def is_number(s):
@@ -106,11 +121,13 @@ def InitLoadFile():
     global WhiteList
     global Bots
     global Players
+    global Commands
     if not os.path.exists(SavePath):
         os.makedirs(SavePath)
     WhiteList = DataFromFile(WhiteList,WLSavePath)
     Bots = DataFromFile(Bots,BotsSavePath)
     Players = DataFromFile(Players,PlayersSavePath)
+    Commands = DataFromFile(Commands,CommandsPath)
 def LayBot(server,Name, arti):
     Bots[Name][3] = arti
     server.execute('player '+Name+' spawn at '+Bots[Name][0]+' '+Bots[Name][1]+' '+Bots[Name][2])
@@ -126,7 +143,7 @@ def UnLayBots(server):
         if not Bots[i][3] :
             KillBot(server, i)
 def CalcTime(Ti):
-    ret = datetime.timedelta(seconds = Ti[0]) 
+    ret = datetime.timedelta(days = Ti[0][0] , seconds = Ti[0][1]) 
     if (Ti[1] != ''):
         ret =ret  + (datetime.datetime.now()-datetime.datetime.strptime(Ti[1],'%Y-%m-%d-%H:%M:%S'))
     ret = ret - datetime.timedelta(microseconds=ret.microseconds)
@@ -253,9 +270,29 @@ def docls(server , command , cmd_len):
         for i in range(1,10):
             time.sleep(0.1)
             if not ClsBool:
-                server.say('中止清除凋落物')
+                server.say('中止清除掉落物')
                 return
     server.execute('kill @e[type=item]')
+def dogoout(server , command , cmd_len):
+    if cmd_len==3:
+        server.execute('ban '+command[2])
+        server.execute('pardon '+command[2])
+        return '滚蛋了！'
+    else:
+        return '你输入的啥？？？'
+def docmd(server , command , cmd_len):
+    global Commands
+    if cmd_len==2 :
+        return doHelpMessage('cmd')
+    if cmd_len==3 and command[2]=='do':
+        for cmd in Commands:
+            server.execute(cmd)
+        return '执行了'+str(len(Commands))+'个命令'
+    if cmd_len==3 and command[2]=='read':
+        Commands = DataFromFile(Commands,CommandsPath)
+        return '读取成功'
+    if cmd_len==3 and command[2]=='list':
+        return str(Commands)
 def on_player_left(server, player):
     #检测是否是假人，如果是就重生
     if not player in Players.keys():
@@ -269,8 +306,8 @@ def on_player_left(server, player):
             LayBots(server)
         #在线时长更新
         now = Players[player]
-        times = datetime.timedelta(seconds=now[0]) + (datetime.datetime.now()-datetime.datetime.strptime(now[1],'%Y-%m-%d-%H:%M:%S'))
-        Players[player] = [times.seconds,'']
+        times = datetime.timedelta(days=now[0][0] , seconds=now[0][1]) + (datetime.datetime.now()-datetime.datetime.strptime(now[1],'%Y-%m-%d-%H:%M:%S'))
+        Players[player] = [[times.days,times.seconds],'']
         DataSaveFile(Players,PlayersSavePath)
 
 def on_player_joined(server , player):
@@ -289,7 +326,7 @@ def on_player_joined(server , player):
             UnLayBots(server)
         #在线时长更新
         if not player in Players:
-            Players[player] = [0,datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')]# Players[]=[总时长(s),上线时间]
+            Players[player] = [[0,0],datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')]# Players[]=[总时长(s),上线时间]
             DataSaveFile(Players,PlayersSavePath)
         else:
             Players[player][1] = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
@@ -336,3 +373,8 @@ def on_info(server, info):
     if cmd_len>=2 and command[1] == 'sp':
         global ClsBool
         ClsBool = False
+    #goout
+    if cmd_len>=2 and command[1] == 'goout':
+        server.reply(info , dogoout(server,command,cmd_len))
+    if cmd_len>=2 and command[1] == 'cmd':
+        server.reply(info , docmd(server,command,cmd_len))
