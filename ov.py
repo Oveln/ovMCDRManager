@@ -13,6 +13,11 @@ BotsSavePath = './ov/Bots.json'
 PlayersSavePath = './ov/Players.json'
 CommandsPath = './ov/Commands.json'
 Perfix = '!!ov'
+ele = {
+    '-1':'minecraft:the_nether',
+    '0':'minecraft:overworld',
+    '1':'minecraft:the_end'
+}
 # admin 3
 # helper 2
 # user 1
@@ -70,7 +75,7 @@ def doHelpMessage(s):
 §c【功能说明】§r
 假人会在所有玩家§c下线之后§r出现在§c设置好的位置§r
 §c【指令说明】§r
-'''+command_input('§e{} bot set 假人名 [x,y,z]§r'.format(Perfix),'输入','{} bot set 假人名 x,y,z'.format(Perfix))+'''     添加假人 
+'''+command_input('§e{} bot set 假人名 [x,y,z,p]§r'.format(Perfix),'输入','{} bot set 假人名 x,y,z,p'.format(Perfix))+'''     添加假人,-1地狱,0主世界,1末地 
 '''+command_input('§e{} bot del 假人名§r'.format(Perfix),'输入','{} bot del 假人名'.format(Perfix))+'''               删除假人
 '''+command_input('§e{} bot lay 假人名§r'.format(Perfix),'输入','{} bot lay 假人名'.format(Perfix))+'''               直接放置假人
 '''+command_input('§e{} bot unlay 假人名§r'.format(Perfix),'输入','{} bot unlay 假人名'.format(Perfix))+'''             取消放置假人
@@ -129,18 +134,18 @@ def InitLoadFile():
     Players = DataFromFile(Players,PlayersSavePath)
     Commands = DataFromFile(Commands,CommandsPath)
 def LayBot(server,Name, arti):
-    Bots[Name][3] = arti
-    server.execute('player '+Name+' spawn at '+Bots[Name][0]+' '+Bots[Name][1]+' '+Bots[Name][2])
+    Bots[Name][4] = arti
+    server.execute('player '+Name+' spawn at '+Bots[Name][0]+' '+Bots[Name][1]+' '+Bots[Name][2]+' facing 1 1 in '+ele[Bots[Name][3]])
 def KillBot(server,Name):
-    Bots[Name][3] = False
+    Bots[Name][4] = False
     server.execute('player '+Name+' kill')
 def LayBots(server):
     for i in Bots.keys() :
-        if not Bots[i][3] :
+        if not Bots[i][4] :
             LayBot(server, i , False)
 def UnLayBots(server):
     for i in Bots.keys() :
-        if not Bots[i][3] :
+        if not Bots[i][4] :
             KillBot(server, i)
 def CalcTime(Ti):
     ret = datetime.timedelta(days = Ti[0][0] , seconds = Ti[0][1]) 
@@ -193,7 +198,14 @@ def dobot(server, command,cmd_len):
             return '指令错误'
         pos = command[4].split(',')
         print(str(pos))
-        if len(pos) == 3 and is_number(pos[0]) and is_number(pos[1]) and is_number(pos[2]):
+        if len(pos) ==3 and is_number(pos[0]) and is_number(pos[1]) and is_number(pos[2]):
+            pos.append('0')
+            pos.append(False)
+            Bots[command[3]] = pos
+            DataSaveFile(Bots,BotsSavePath)
+            return '添加成功'
+        if len(pos) ==4 and is_number(pos[0]) and is_number(pos[1]) and is_number(pos[2]) and is_number(pos[3]):
+            print(pos)
             pos.append(False)
             Bots[command[3]] = pos
             DataSaveFile(Bots,BotsSavePath)
@@ -296,8 +308,8 @@ def docmd(server , command , cmd_len):
 def on_player_left(server, player):
     #检测是否是假人，如果是就重生
     if not player in Players.keys():
-       if Bots[player][3]:
-           LayBot(server,player,Bots[player][3])
+       if Bots[player][4]:
+           LayBot(server,player,Bots[player][4])
     else:
         #人数统计
         global NumberOfPeople
