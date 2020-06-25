@@ -153,6 +153,10 @@ def CalcTime(Ti):
         ret =ret  + (datetime.datetime.now()-datetime.datetime.strptime(Ti[1],'%Y-%m-%d-%H:%M:%S'))
     ret = ret - datetime.timedelta(microseconds=ret.microseconds)
     return '§c'+str(ret)+'§r'
+def InList(x , li):
+    for i in li:
+        if x==i :return True
+    return False
 def dowl(server, command,cmd_len):
     if cmd_len==2:
         return doHelpMessage('wl')
@@ -307,7 +311,7 @@ def docmd(server , command , cmd_len):
         return str(Commands)
 def on_player_left(server, player):
     #检测是否是假人，如果是就重生
-    if not player in Players.keys():
+    if InList(player , WhiteList):
        if Bots[player][4]:
            LayBot(server,player,Bots[player][4])
     else:
@@ -324,11 +328,11 @@ def on_player_left(server, player):
 
 def on_player_joined(server , player):
     #whitelist check
-    try:
-        WhiteList.index(player)
-    except:
-        server.execute('ban '+player)
-        server.execute('pardon '+player)
+    if not InList(player , WhiteList):
+        if not (player in Bots.keys()):
+            server.execute('ban '+player)
+            server.execute('pardon '+player)
+            return
     
     if not (player in Bots.keys()):
         #人数统计
